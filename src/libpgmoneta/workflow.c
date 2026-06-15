@@ -61,7 +61,6 @@ static struct workflow* wf_delete_backup(void);
 static struct workflow* wf_retention(void);
 static struct workflow* wf_post_rollup(struct backup* backup);
 static struct workflow* wf_list_s3_objects(void);
-static struct workflow* wf_delete_s3_objects(void);
 static struct workflow* wf_restore_s3_objects(void);
 
 static int get_error_code(int type, int flow, struct art* nodes);
@@ -100,9 +99,6 @@ pgmoneta_workflow_create(int workflow_type, struct backup* backup)
          break;
       case WORKFLOW_TYPE_S3_LIST:
          w = wf_list_s3_objects();
-         break;
-      case WORKFLOW_TYPE_S3_DELETE:
-         w = wf_delete_s3_objects();
          break;
       case WORKFLOW_TYPE_S3_RESTORE:
          w = wf_restore_s3_objects();
@@ -539,8 +535,6 @@ pgmoneta_workflow_name(int workflow_type)
          return WORKFLOW_NAME_POST_ROLLUP;
       case WORKFLOW_TYPE_S3_LIST:
          return WORKFLOW_NAME_S3_LIST;
-      case WORKFLOW_TYPE_S3_DELETE:
-         return WORKFLOW_NAME_S3_DELETE;
       case WORKFLOW_TYPE_S3_RESTORE:
          return WORKFLOW_NAME_S3_RESTORE;
       default:
@@ -1126,34 +1120,6 @@ wf_restore_s3_objects(void)
    if (config->storage_engine & STORAGE_ENGINE_S3)
    {
       head = pgmoneta_storage_create_s3(WORKFLOW_TYPE_S3_RESTORE);
-   }
-
-#ifdef DEBUG
-   struct workflow* current = head;
-   while (current != NULL)
-   {
-      assert(current->name != NULL);
-      assert(current->setup != NULL);
-      assert(current->execute != NULL);
-      assert(current->teardown != NULL);
-      current = current->next;
-   }
-#endif
-
-   return head;
-}
-
-static struct workflow*
-wf_delete_s3_objects(void)
-{
-   struct workflow* head = NULL;
-   struct main_configuration* config = NULL;
-
-   config = (struct main_configuration*)shmem;
-
-   if (config->storage_engine & STORAGE_ENGINE_S3)
-   {
-      head = pgmoneta_storage_create_s3(WORKFLOW_TYPE_S3_DELETE);
    }
 
 #ifdef DEBUG

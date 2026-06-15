@@ -146,7 +146,6 @@ pgmoneta_storage_create_s3(int workflow_type)
          wf->teardown = &s3_storage_noop_teardown;
          break;
       case WORKFLOW_TYPE_DELETE_BACKUP:
-      case WORKFLOW_TYPE_S3_DELETE:
          wf->name = &s3_cleanup_name;
          wf->execute = &s3_storage_cleanup;
          wf->teardown = &s3_storage_noop_teardown;

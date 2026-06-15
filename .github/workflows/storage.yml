@@ -414,13 +414,18 @@ jobs:
 
           echo "restore test ok" 
 
-      - name: Test S3 delete
+      - name: Test delete
         run: |
           CLI="./build/src/pgmoneta-cli -c ${{ env.BASE_DIR }}/conf/pgmoneta_cli.conf"
           LABEL="${{ steps.backup.outputs.backup_label }}"
           EXPECTED="${{ steps.list.outputs.upload_count }}"
 
-          if ! $CLI s3 delete primary "$LABEL"; then
+          $CLI -F json list-backup primary
+
+          ls -la ${{ env.BASE_DIR }}/backup/primary/backup/$LABEL/
+          cat ${{ env.BASE_DIR }}/backup/primary/backup/$LABEL/backup.info
+
+          if ! $CLI delete primary "$LABEL"; then
             echo "FAIL: delete command returned error"
             cat ${{ env.LOG_DIR }}/pgmoneta.log
             exit 1
@@ -439,7 +444,7 @@ jobs:
           fi
 
           if [ "$REMAINING" -ne 0 ] 2>/dev/null; then
-            echo "FAIL: s3 delete did not remove all objects (remaining: $REMAINING / $EXPECTED)"
+            echo "FAIL: delete did not remove all objects (remaining: $REMAINING / $EXPECTED)"
             cat ${{ env.LOG_DIR }}/pgmoneta.log
             exit 1
           fi

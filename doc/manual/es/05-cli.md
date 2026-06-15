@@ -554,7 +554,6 @@ Ejemplo
 
 ```sh
 pgmoneta-cli s3 ls primary
-pgmoneta-cli s3 delete primary 20260302163357
 pgmoneta-cli s3 restore primary 20260316000957 /tmp
 ```
 
@@ -571,19 +570,6 @@ pgmoneta-cli s3 ls primary
 pgmoneta-cli s3 ls
 ```
 
-### s3 delete
-
-Eliminar todos los archivos/objetos del servidor en almacenamiento remoto s3 bajo un prefijo dado.
-
-- prefix es relativo a `<s3_base_dir>/<server>/backup/`
-
-Ejemplos
-
-```sh
-pgmoneta-cli s3 delete primary 20260302163357/
-pgmoneta-cli s3 delete primary wal/
-```
-
 ### s3 restore
 
 Restaura un backup directamente desde S3 al directorio de destino indicado.
@@ -591,7 +577,6 @@ Restaura un backup directamente desde S3 al directorio de destino indicado.
 - Descarga y verifica la integridad de `backup.info` mediante SHA512
 - Descarga todos los archivos de datos con las extensiones de compresión/cifrado correctas
 - Restaura el backup preparado en el directorio solicitado
-- Elimina la copia local temporal tras una restauración exitosa
 
 Ejemplos
 

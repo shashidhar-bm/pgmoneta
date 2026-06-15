@@ -520,22 +520,7 @@ MCTF_TEST(test_progress_setup_s3_workflows)
 
    MCTF_ASSERT_INT_EQ(pgmoneta_art_create(&nodes), 0,
                       cleanup, "failed to recreate art");
-   workflow = pgmoneta_workflow_create(WORKFLOW_TYPE_S3_DELETE, NULL);
-   MCTF_ASSERT_PTR_NONNULL(workflow, cleanup, "failed to create s3 delete workflow");
-   pgmoneta_progress_setup(0, workflow, nodes, WORKFLOW_TYPE_S3_DELETE);
 
-   MCTF_ASSERT_INT_EQ((int)(uintptr_t)pgmoneta_art_search(nodes, NODE_PROGRESS_LIMIT_DELETE), 100,
-                      cleanup, "s3 delete should reserve 100 percent for delete");
-   MCTF_ASSERT_INT_EQ((int)atomic_load(&p->current_phase), PHASE_DELETE,
-                      cleanup, "s3 delete should start in delete phase");
-   pgmoneta_progress_teardown(0);
-   pgmoneta_workflow_destroy(workflow);
-   workflow = NULL;
-   pgmoneta_art_destroy(nodes);
-   nodes = NULL;
-
-   MCTF_ASSERT_INT_EQ(pgmoneta_art_create(&nodes), 0,
-                      cleanup, "failed to recreate art again");
    workflow = pgmoneta_workflow_create(WORKFLOW_TYPE_S3_RESTORE, NULL);
    MCTF_ASSERT_PTR_NONNULL(workflow, cleanup, "failed to create s3 restore workflow");
    pgmoneta_progress_setup(0, workflow, nodes, WORKFLOW_TYPE_S3_RESTORE);
