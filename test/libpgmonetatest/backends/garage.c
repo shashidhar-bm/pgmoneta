@@ -211,11 +211,15 @@ garage_start(struct mctf_se* s)
    {
       return rc; /* MCTF_SKIPPED bubbles up to mctf_se_up */
    }
+   fprintf(stderr, "    - container started\n");
+   fflush(stderr);
 
    if (provision(s) != MCTF_OK)
    {
       return MCTF_FAIL;
    }
+   fprintf(stderr, "    - bucket provisioned\n");
+   fflush(stderr);
 
    snprintf(s->endpoint, sizeof(s->endpoint), "localhost");
    s->port = GARAGE_S3_PORT;

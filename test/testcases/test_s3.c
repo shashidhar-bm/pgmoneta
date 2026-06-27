@@ -44,12 +44,12 @@
 
 static int storage_status = MCTF_FAIL;
 
-MCTF_MODULE_SETUP(se_s3)
+MCTF_MODULE_SETUP(s3)
 {
    storage_status = mctf_se_up(MCTF_BACKEND_GARAGE);
 }
 
-MCTF_MODULE_TEARDOWN(se_s3)
+MCTF_MODULE_TEARDOWN(s3)
 {
    mctf_se_down();
 }
@@ -58,7 +58,7 @@ MCTF_MODULE_TEARDOWN(se_s3)
  * Backup to S3 succeeds and the local catalog records it. Local metadata
  * must always be present and authoritative, even with a remote-only engine.
  */
-MCTF_TEST(test_se_s3_backup_keeps_local_metadata)
+MCTF_INTEGRATION_TEST(test_s3_backup_keeps_local_metadata)
 {
    char* listing = NULL;
 
@@ -85,7 +85,7 @@ cleanup:
  * Full round trip: back up to S3, then restore FROM S3 and verify the data
  * directory was genuinely reconstructed (not just an exit-0 with no files).
  */
-MCTF_TEST(test_se_s3_backup_restore_roundtrip)
+MCTF_INTEGRATION_TEST(test_s3_backup_restore_roundtrip)
 {
    char* out = NULL;
    char label[256] = {0};

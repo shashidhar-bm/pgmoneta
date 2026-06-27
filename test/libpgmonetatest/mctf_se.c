@@ -164,6 +164,8 @@ daemon_up(void)
    {
       if (mctf_sh(NULL, "%s -c %s status", cli_bin, cli_conf_path) == 0)
       {
+         fprintf(stderr, "    - managed pgmoneta started\n");
+         fflush(stderr);
          return MCTF_OK;
       }
       sleep(1);
@@ -266,34 +268,34 @@ mctf_se_up(enum mctf_backend backend)
    storage_active = true; /* set early so teardown runs if a later step fails */
 
    start = time(NULL);
-   fprintf(stderr, "  ~ starting %s backend ... ", driver->name);
+   fprintf(stderr, "  ~ starting %s backend\n", driver->name);
    fflush(stderr);
 
    rc = driver->start(&storage);
    if (rc == MCTF_SKIPPED)
    {
-      fprintf(stderr, "skipped (no container engine)\n");
+      fprintf(stderr, "  ~ skipped (no container engine)\n");
       fflush(stderr);
       storage_active = false;
       return MCTF_SKIPPED;
    }
    if (rc != MCTF_OK || !storage.container.running || write_confs() != MCTF_OK)
    {
-      fprintf(stderr, "FAILED\n");
+      fprintf(stderr, "  ~ %s backend FAILED\n", driver->name);
       fflush(stderr);
       mctf_se_down();
       return MCTF_FAIL;
    }
    if (daemon_up() != MCTF_OK)
    {
-      fprintf(stderr, "FAILED\n");
+      fprintf(stderr, "  ~ %s backend FAILED\n", driver->name);
       fflush(stderr);
       dump_managed_log();
       mctf_se_down();
       return MCTF_FAIL;
    }
 
-   fprintf(stderr, "ready (%ds)\n", (int)(time(NULL) - start));
+   fprintf(stderr, "  ~ %s backend ready (%ds)\n", driver->name, (int)(time(NULL) - start));
    fflush(stderr);
 
    return MCTF_OK;

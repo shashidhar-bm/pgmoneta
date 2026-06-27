@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - 0.21.x
-      - temp-storage   # TEMPORARY: debug storage-engine CI on a fork; remove before merge
+      - temp-storage
   pull_request:
     branches:
       - main
@@ -185,16 +185,21 @@ jobs:
   # (Garage stands in for S3). The MCTF test binary brings the backend
   # container up and down itself (MCTF_START_CONTAINER), so this job only
   # provides a PostgreSQL instance and the test environment variables; Docker
-  # is already present on ubuntu-latest (unlike the build-linux container,
-  # where se_s3 correctly reports [SKIP]).
-  se-integration:
-    needs: [format-check]   # TEMPORARY: decoupled from build-linux for faster debug; restore [format-check, build-linux] before merge
+  # is already present on ubuntu-latest. These are opt-in integration tests
+  # (MCTF_INTEGRATION_TEST), selected here with "--integration" (runs every
+  # backend module: s3, and later azure/ssh); they do not run as part of the
+  # default suite in build-linux.
+  storage-engines:
+    # Builds its own pgmoneta, so it has no data dependency on build-linux;
+    # gated only on format-check, it runs in parallel with build-linux for
+    # fast, independent storage-engine feedback.
+    needs: [format-check]
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        pg_version: ["17"]
+        pg_version: ["14", "15", "17"]
 
     env:
       PG_VERSION: "${{ matrix.pg_version }}"
@@ -331,12 +336,12 @@ jobs:
           } >> $GITHUB_ENV
 
       - name: Run storage-engine tests
-        run: ./build/test/pgmoneta-test -m se_
+        run: ./build/test/pgmoneta-test --integration
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: se-integration-logs-${{ env.PG_VERSION }}
+          name: storage-engines-logs-${{ env.PG_VERSION }}
           path: ${{ env.ROOT_DIR }}
           retention-days: 14

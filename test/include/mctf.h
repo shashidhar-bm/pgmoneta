@@ -65,6 +65,7 @@ typedef struct mctf_test
    const char* file;             /**< Source file name */
    mctf_test_func_t func;        /**< Test function pointer */
    bool is_negative;             /**< True if this is a negative test */
+   bool is_integration;          /**< True if opt-in (runs only via --integration or an explicit -t/-m) */
    unsigned int max_elapsed_sec; /**< Max allowed runtime in seconds; 0 = no limit */
    struct mctf_test* next;       /**< Next test in linked list */
 } mctf_test_t;
@@ -147,6 +148,22 @@ mctf_cleanup(void);
  */
 void
 mctf_register_test(const char* name, const char* module, const char* file, mctf_test_func_t func);
+
+/**
+ * Register an opt-in integration test.
+ *
+ * Integration tests are NOT run as part of the default full suite; they run
+ * only when explicitly selected (the runner's --integration flag runs all of
+ * them; -t/-m can select individual ones). This keeps them out of environments
+ * where they would only skip (such as the build-linux container, no engine).
+ *
+ * @param name The test name
+ * @param module The module name
+ * @param file The source file name
+ * @param func The test function
+ */
+void
+mctf_register_integration_test(const char* name, const char* module, const char* file, mctf_test_func_t func);
 
 /**
  * Register a test function with additional flags.
@@ -234,9 +251,10 @@ mctf_extract_filename(const char* file_path);
  * Filter type for test execution
  */
 typedef enum {
-   MCTF_FILTER_NONE,  /* Run all tests */
-   MCTF_FILTER_TEST,  /* Filter by test name */
-   MCTF_FILTER_MODULE /* Filter by module name */
+   MCTF_FILTER_NONE,       /* Run all tests (excludes opt-in integration tests) */
+   MCTF_FILTER_TEST,       /* Filter by test name */
+   MCTF_FILTER_MODULE,     /* Filter by module name */
+   MCTF_FILTER_INTEGRATION /* Run only opt-in integration tests (all backends) */
 } mctf_filter_type_t;
 
 /**
@@ -440,6 +458,22 @@ mctf_get_results(size_t* count);
       const char* filename = mctf_extract_filename(file_path);                        \
       mctf_register_test(#name, mctf_extract_module_name(file_path), filename, name); \
    }                                                                                  \
+   static int name(void)
+
+/**
+ * Register an opt-in integration test (see mctf_register_integration_test).
+ * Identical to MCTF_TEST, but the test only runs when explicitly selected with
+ * -t/-m; it is skipped by the default full-suite run.
+ * Usage: MCTF_INTEGRATION_TEST(test_function_name) { ... }
+ */
+#define MCTF_INTEGRATION_TEST(name)                                                               \
+   static int name(void);                                                                         \
+   static void __attribute__((constructor)) mctf_register_integration_##name(void)                \
+   {                                                                                              \
+      const char* file_path = __FILE__;                                                           \
+      const char* filename = mctf_extract_filename(file_path);                                    \
+      mctf_register_integration_test(#name, mctf_extract_module_name(file_path), filename, name); \
+   }                                                                                              \
    static int name(void)
 
 /**
