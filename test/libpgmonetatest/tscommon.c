@@ -173,17 +173,34 @@ pgmoneta_test_validate_configuration(void* shmem)
 int
 pgmoneta_test_add_backup(void)
 {
-   /* Ensure server is online before backup */
-   if (pgmoneta_tsclient_mode("primary", "online", 0))
+   /* Retry up to 3 times.  After basedir_cleanup deletes the WAL directory,
+    * the WAL streaming child dies and wal_streaming becomes <= 0.  The mode
+    * "online" handler forks a new child but returns before it authenticates,
+    * so the first backup attempt may fast-fail with BACKUP_WAL.  A 2-second
+    * wait is usually enough for the child to connect and set wal_streaming. */
+   for (int attempt = 0; attempt < 3; attempt++)
    {
-      return 1;
-   }
+      if (pgmoneta_tsclient_mode("primary", "online", 0))
+      {
+         if (attempt < 2)
+         {
+            sleep(2);
+            continue;
+         }
+         return 1;
+      }
 
-   if (pgmoneta_tsclient_backup("primary", NULL, 0))
-   {
-      return 1;
+      if (pgmoneta_tsclient_backup("primary", NULL, 0) == 0)
+      {
+         return 0;
+      }
+
+      if (attempt < 2)
+      {
+         sleep(2);
+      }
    }
-   return 0;
+   return 1;
 }
 
 int

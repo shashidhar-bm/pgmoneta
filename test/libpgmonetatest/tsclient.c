@@ -43,6 +43,7 @@
 /* system */
 #include <err.h>
 #include <getopt.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,19 @@
 
 static int check_output_outcome(int socket, int expected_error, struct json** output);
 static int get_connection();
+
+/* Flag set by SIGALRM to mark that a management read timed out.
+ * Must be sig_atomic_t; the handler has no SA_RESTART so read() returns
+ * EINTR, which read_complete() (management.c) does NOT retry — unlike
+ * EAGAIN which it retries forever, making SO_RCVTIMEO useless here. */
+static volatile sig_atomic_t tsclient_read_timed_out = 0;
+
+static void
+tsclient_alarm_handler(int sig)
+{
+   (void)sig;
+   tsclient_read_timed_out = 1;
+}
 
 int
 pgmoneta_tsclient_backup(char* server, char* incremental, int expected_error)
@@ -77,9 +91,6 @@ pgmoneta_tsclient_backup(char* server, char* incremental, int expected_error)
    {
       goto error;
    }
-
-   // Wait for 1 second to avoid invoking backup too frequently
-   sleep(1);
 
    pgmoneta_disconnect(socket);
    return 0;
@@ -754,8 +765,28 @@ check_output_outcome(int socket, int expected_error, struct json** output)
    struct json* outcome = NULL;
    bool status = false;
    int error = 0;
+   struct sigaction sa_new;
+   struct sigaction sa_old;
+   int read_ret;
 
-   if (pgmoneta_management_read_json(NULL, socket, NULL, NULL, &read))
+   /* Arm a 5-minute watchdog.  read_complete() in management.c retries on
+    * EAGAIN/EWOULDBLOCK forever, so SO_RCVTIMEO never breaks the loop.
+    * SIGALRM without SA_RESTART makes the underlying read() return EINTR
+    * instead; read_complete only retries EAGAIN/EWOULDBLOCK, so EINTR
+    * propagates as an error and unblocks us. */
+   tsclient_read_timed_out = 0;
+   sa_new.sa_handler = tsclient_alarm_handler;
+   sigemptyset(&sa_new.sa_mask);
+   sa_new.sa_flags = 0;   /* no SA_RESTART: read() must surface EINTR */
+   sigaction(SIGALRM, &sa_new, &sa_old);
+   alarm(300);
+
+   read_ret = pgmoneta_management_read_json(NULL, socket, NULL, NULL, &read);
+
+   alarm(0);
+   sigaction(SIGALRM, &sa_old, NULL);
+
+   if (tsclient_read_timed_out || read_ret)
    {
       goto error;
    }

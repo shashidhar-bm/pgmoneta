@@ -279,6 +279,13 @@ pgmoneta_backup(int client_fd, int server, uint8_t compression, uint8_t encrypti
       goto error;
    }
 
+   /* Release the repository lock before responding.  The client unblocks the
+    * instant the response is sent and may immediately issue archive/verify/
+    * restore, which also acquire this lock.  The error path already unlocks
+    * first; align the success path to the same order. */
+   config->common.servers[server].active_backup = false;
+   atomic_store(&config->common.servers[server].repository, false);
+
    if (pgmoneta_management_response_ok(NULL, client_fd, start_t, end_t, compression, encryption, payload))
    {
       ec = MANAGEMENT_ERROR_BACKUP_NETWORK;
@@ -289,9 +296,6 @@ pgmoneta_backup(int client_fd, int server, uint8_t compression, uint8_t encrypti
    pgmoneta_log_info("Backup: %s/%s (Elapsed: %s)", config->common.servers[server].name, date, elapsed);
 
    pgmoneta_wal_server_compress_encrypt(server, NULL, NULL);
-
-   config->common.servers[server].active_backup = false;
-   atomic_store(&config->common.servers[server].repository, false);
 
    pgmoneta_json_destroy(payload);
 

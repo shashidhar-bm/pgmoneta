@@ -202,18 +202,23 @@ pgmoneta_archive(SSL* ssl, int client_fd, int server, uint8_t compression, uint8
       clock_gettime(CLOCK_MONOTONIC_RAW, &end_t);
 #endif
 
+      elapsed = pgmoneta_get_timestamp_string(start_t, end_t, &total_seconds);
+
+      pgmoneta_log_info("Archive: %s/%s (Elapsed: %s)", config->common.servers[server].name, label, elapsed);
+
+      free(elapsed);
+
+      /* Release before responding so the client can immediately start the
+       * next operation that also acquires this lock.  Same order as error. */
+      config->common.servers[server].active_archive = false;
+      atomic_store(&config->common.servers[server].repository, false);
+
       if (pgmoneta_management_response_ok(NULL, client_fd, start_t, end_t, compression, encryption, payload))
       {
          ec = MANAGEMENT_ERROR_ARCHIVE_NETWORK;
          pgmoneta_log_error("Archive: Error sending response for %s/%s", config->common.servers[server].name, identifier);
          goto error;
       }
-
-      elapsed = pgmoneta_get_timestamp_string(start_t, end_t, &total_seconds);
-
-      pgmoneta_log_info("Archive: %s/%s (Elapsed: %s)", config->common.servers[server].name, label, elapsed);
-
-      free(elapsed);
    }
 
    pgmoneta_art_destroy(nodes);
