@@ -435,8 +435,9 @@ pgmoneta_test_exec_command(const char* command, char** output, int* exit_code)
    FILE* fp = NULL;
    char* cmd = NULL;
    char buffer[512];
-   char full_output[4096];
-   size_t available = 0;
+   char* out = NULL;
+   size_t out_size = 0;
+   size_t out_used = 0;
    size_t cmd_len = 0;
    int status = 0;
 
@@ -461,24 +462,39 @@ pgmoneta_test_exec_command(const char* command, char** output, int* exit_code)
       return 1;
    }
 
-   memset(full_output, 0, sizeof(full_output));
-   available = sizeof(full_output) - 1;
+   out_size = 4096;
+   out = malloc(out_size);
+   if (out == NULL)
+   {
+      pclose(fp);
+      free(cmd);
+      return 1;
+   }
+   out[0] = '\0';
 
    while (fgets(buffer, sizeof(buffer), fp) != NULL)
    {
       size_t chunk = strlen(buffer);
-      if (available == 0)
+
+      if (out_used + chunk + 1 > out_size)
       {
-         break;
+         size_t new_size = out_size * 2;
+         while (new_size < out_used + chunk + 1)
+            new_size *= 2;
+         char* tmp = realloc(out, new_size);
+         if (tmp == NULL)
+         {
+            while (fgets(buffer, sizeof(buffer), fp) != NULL)
+               ;
+            break;
+         }
+         out = tmp;
+         out_size = new_size;
       }
 
-      if (chunk > available)
-      {
-         chunk = available;
-      }
-
-      strncat(full_output, buffer, chunk);
-      available -= chunk;
+      memcpy(out + out_used, buffer, chunk);
+      out_used += chunk;
+      out[out_used] = '\0';
    }
 
    status = pclose(fp);
@@ -493,12 +509,7 @@ pgmoneta_test_exec_command(const char* command, char** output, int* exit_code)
       *exit_code = 1;
    }
 
-   *output = strdup(full_output);
-   if (*output == NULL)
-   {
-      return 1;
-   }
-
+   *output = out;
    return 0;
 }
 
