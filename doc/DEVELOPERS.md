@@ -65,10 +65,10 @@ This process is optional by using the `cmake` variable `-DDOCS=TRUE` (default), 
     Download the `Eisvogel` template for `pandoc`, please visit the [pandoc-latex-template](https://github.com/Wandmalfarbe/pandoc-latex-template) repository. For a standard installation, you can follow the steps outlined below.
 
 ```sh
-    wget https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v3.4.0/Eisvogel-3.4.0.tar.gz
-    tar -xzf Eisvogel-3.4.0.tar.gz
+    wget https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v3.5.0/Eisvogel-3.5.0.tar.gz
+    tar -xzf Eisvogel-3.5.0.tar.gz
     mkdir -p $HOME/.local/share/pandoc/templates
-    mv Eisvogel-3.4.0/eisvogel.latex $HOME/.local/share/pandoc/templates/
+    mv Eisvogel-3.5.0/eisvogel.latex $HOME/.local/share/pandoc/templates/
 ```
 
 3. Add package for LaTeX
@@ -76,7 +76,9 @@ This process is optional by using the `cmake` variable `-DDOCS=TRUE` (default), 
     Download the additional packages required for generating PDF and HTML files.
 
 ```sh
-    dnf install 'tex(fvextra.sty)' 'tex(footnote.sty)' 'tex(footnotebackref.sty)' 'tex(pagecolor.sty)' 'tex(hardwrap.sty)' 'tex(mdframed.sty)' 'tex(sourcesanspro.sty)' 'tex(ly1enc.def)' 'tex(sourcecodepro.sty)' 'tex(titling.sty)' 'tex(csquotes.sty)' 'tex(zref-abspage.sty)' 'tex(needspace.sty)' 'tex(selnolig.sty)' texlive-collection-latexextra
+    dnf install 'tex(csquotes.sty)' 'tex(footnote.sty)' 'tex(footnotebackref.sty)' 'tex(fvextra.sty)' 'tex(hardwrap.sty)' 'tex(ly1enc.def)' \
+                'tex(mdframed.sty)' 'tex(needspace.sty)' 'tex(pagecolor.sty)' 'tex(selnolig.sty)' 'tex(sourcecodepro.sty)' 'tex(sourcesans.sty)' \
+                'tex(sourcesanspro.sty)' 'tex(titling.sty)' 'tex(zref-abspage.sty)' texlive-collection-latexextra
 ```
 
 #### Generate API guide
