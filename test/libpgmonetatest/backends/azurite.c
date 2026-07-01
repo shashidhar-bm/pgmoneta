@@ -60,15 +60,14 @@
 #define AZURITE_BLOB_PORT 10000
 
 /*
- * Create the blob container in Azurite using SharedKey authentication.
- * Python3 stdlib only — no external packages needed.
+ * Create the blob container in Azurite using Python3 stdlib only.
  *
- * Azurite uses path-style URLs (/<account>/<container>) instead of the
- * host-style URLs used by production Azure.
- *
- * Container creation uses the azure-storage-blob SDK to avoid re-implementing
- * the per-version quirks of the SharedKey canonical string; the SDK handles
- * those transparently. Install it with: pip3 install azure-storage-blob
+ * Azurite uses path-style URLs (/<account>/<container>) and SharedKey auth.
+ * The canonical string follows the Azure SharedKey full format:
+ *   VERB \n Content-Encoding \n ... \n Range \n
+ *   CanonicalizedHeaders \n CanonicalizedResource
+ * Content-Length must be "0" (not empty) for a PUT with an empty body.
+ * No external Python packages are required.
  */
 static int
 provision(struct mctf_se* s)
@@ -85,35 +84,74 @@ provision(struct mctf_se* s)
       return MCTF_FAIL;
    }
 
+   /*
+    * All {VAR} tokens in the f-strings below are Python variable references,
+    * not C format specifiers.  Only ACCOUNT/KEY/CONTAINER/PORT are injected
+    * by C's printf via %%s / %%d.
+    */
+   /*
+    * Two Azurite-specific quirks vs. production Azure SharedKey:
+    *
+    * 1. Content-Length in the canonical string must be '' (empty string),
+    *    even for a PUT with an empty body.  Production Azure uses '0' for
+    *    API versions >= 2014-02-14, but Azurite always expects ''.
+    *
+    * 2. The canonical resource uses double account prefix for path-style URLs:
+    *      /{account}/{account}/{container}\nrestype:container
+    *    because the URL path already contains /{account}/{container} and the
+    *    canonical resource is built as /{account} + {url_path}.
+    */
    fprintf(f,
-      "import sys\n"
-      "try:\n"
-      "    from azure.storage.blob import BlobServiceClient\n"
-      "except ImportError:\n"
-      "    print('azure-storage-blob not installed; run: pip3 install azure-storage-blob', file=sys.stderr)\n"
-      "    sys.exit(1)\n"
+      "import base64, hashlib, hmac, datetime, http.client, sys\n"
       "\n"
       "ACCOUNT   = '%s'\n"
-      "KEY       = '%s'\n"
+      "KEY_B64   = '%s'\n"
       "CONTAINER = '%s'\n"
       "PORT      = %d\n"
+      "VERSION   = '2020-08-04'\n"
       "\n"
-      "conn_str = (\n"
-      "    'DefaultEndpointsProtocol=http;'\n"
-      "    f'AccountName={ACCOUNT};'\n"
-      "    f'AccountKey={KEY};'\n"
-      "    f'BlobEndpoint=http://127.0.0.1:{PORT}/{ACCOUNT};'\n"
+      "now = datetime.datetime.utcnow().strftime('%%a, %%d %%b %%Y %%H:%%M:%%S GMT')\n"
+      "\n"
+      "string_to_sign = (\n"
+      "    'PUT\\n'\n"
+      "    '\\n'   # Content-Encoding\n"
+      "    '\\n'   # Content-Language\n"
+      "    '\\n'   # Content-Length (empty, not '0' — Azurite quirk)\n"
+      "    '\\n'   # Content-MD5\n"
+      "    '\\n'   # Content-Type\n"
+      "    '\\n'   # Date (empty; using x-ms-date)\n"
+      "    '\\n'   # If-Modified-Since\n"
+      "    '\\n'   # If-Match\n"
+      "    '\\n'   # If-None-Match\n"
+      "    '\\n'   # If-Unmodified-Since\n"
+      "    '\\n'   # Range\n"
+      "    f'x-ms-date:{now}\\n'\n"
+      "    f'x-ms-version:{VERSION}\\n'\n"
+      "    f'/{ACCOUNT}/{ACCOUNT}/{CONTAINER}\\nrestype:container'\n"
       ")\n"
-      "client = BlobServiceClient.from_connection_string(conn_str)\n"
-      "try:\n"
-      "    client.create_container(CONTAINER)\n"
+      "\n"
+      "key = base64.b64decode(KEY_B64)\n"
+      "sig = base64.b64encode(\n"
+      "    hmac.new(key, string_to_sign.encode('utf-8'), hashlib.sha256).digest()\n"
+      ").decode()\n"
+      "\n"
+      "conn = http.client.HTTPConnection('127.0.0.1', PORT)\n"
+      "conn.request('PUT', f'/{ACCOUNT}/{CONTAINER}?restype=container', body=b'', headers={\n"
+      "    'x-ms-date':     now,\n"
+      "    'x-ms-version':  VERSION,\n"
+      "    'Content-Length': '0',\n"
+      "    'Authorization': f'SharedKey {ACCOUNT}:{sig}',\n"
+      "})\n"
+      "resp = conn.getresponse()\n"
+      "body = resp.read().decode(errors='replace')\n"
+      "conn.close()\n"
+      "if resp.status == 201:\n"
       "    print(f'container {CONTAINER!r} created')\n"
-      "except Exception as e:\n"
-      "    if 'ContainerAlreadyExists' in str(e):\n"
-      "        print(f'container {CONTAINER!r} already exists')\n"
-      "    else:\n"
-      "        print(f'error: {e}', file=sys.stderr)\n"
-      "        sys.exit(1)\n",
+      "elif resp.status == 409:\n"
+      "    print(f'container {CONTAINER!r} already exists')\n"
+      "else:\n"
+      "    print(f'HTTP {resp.status}: {body}', file=sys.stderr)\n"
+      "    sys.exit(1)\n",
       AZURITE_ACCOUNT, AZURITE_KEY, AZURITE_CONTAINER, AZURITE_BLOB_PORT);
 
    fclose(f);
