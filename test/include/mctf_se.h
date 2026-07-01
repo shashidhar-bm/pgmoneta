@@ -53,8 +53,8 @@ extern "C" {
  * Storage backends supported by the integration-test layer.
  */
 enum mctf_backend {
-   MCTF_BACKEND_GARAGE = 0 /**< S3, emulated by Garage */
-   /* future: MCTF_BACKEND_AZURITE, MCTF_BACKEND_SSH, MCTF_BACKEND_GCS, ... */
+   MCTF_BACKEND_GARAGE = 0, /**< S3, emulated by Garage */
+   MCTF_BACKEND_AZURITE = 1 /**< Azure Blob Storage, emulated by Azurite */
 };
 
 /**
@@ -98,8 +98,17 @@ struct mctf_se_driver
    void (*stop)(struct mctf_se* s);
 
    /**
-    * Emit the backend-specific server configuration lines (e.g. the s3_*
-    * keys) into the [primary] section of the managed pgmoneta.conf.
+    * Emit backend-specific global configuration lines (e.g. azure_* keys)
+    * into the [pgmoneta] section of the managed pgmoneta.conf.
+    * Optional: set to NULL when all config belongs in the server section.
+    * @return MCTF_OK on success, otherwise MCTF_FAIL
+    */
+   int (*write_global_conf)(struct mctf_se* s, FILE* f);
+
+   /**
+    * Emit backend-specific per-server configuration lines (e.g. s3_* keys)
+    * into the [primary] section of the managed pgmoneta.conf.
+    * Optional: set to NULL when all config belongs in the global section.
     * @return MCTF_OK on success, otherwise MCTF_FAIL
     */
    int (*write_server_conf)(struct mctf_se* s, FILE* f);

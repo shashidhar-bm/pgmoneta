@@ -56,13 +56,13 @@
  * driver below, and add one row to the table. Nothing else changes.
  */
 extern const struct mctf_se_driver mctf_garage_driver;
-/* extern const struct mctf_se_driver mctf_azurite_driver; */
-/* extern const struct mctf_se_driver mctf_ssh_driver;     */
+extern const struct mctf_se_driver mctf_azurite_driver;
+/* extern const struct mctf_se_driver mctf_ssh_driver; */
 
 static const struct mctf_se_driver* registry[] = {
-   [MCTF_BACKEND_GARAGE] = &mctf_garage_driver,
-   /* [MCTF_BACKEND_AZURITE] = &mctf_azurite_driver, */
-   /* [MCTF_BACKEND_SSH]     = &mctf_ssh_driver,     */
+   [MCTF_BACKEND_GARAGE]  = &mctf_garage_driver,
+   [MCTF_BACKEND_AZURITE] = &mctf_azurite_driver,
+   /* [MCTF_BACKEND_SSH] = &mctf_ssh_driver, */
 };
 
 /* Managed-instance state (single active backend). */
@@ -118,6 +118,14 @@ write_confs(void)
    fprintf(f, "unix_socket_dir = %s/\n", sock_dir);
    fprintf(f, "pidfile = %s/pgmoneta.pid\n", run_dir);
    fprintf(f, "workspace = %s/workspace\n", run_dir);
+   if (storage.driver->write_global_conf != NULL)
+   {
+      if (storage.driver->write_global_conf(&storage, f) != MCTF_OK)
+      {
+         fclose(f);
+         return MCTF_FAIL;
+      }
+   }
    fprintf(f, "\n");
    fprintf(f, "[primary]\n");
    fprintf(f, "host = %s\n", primary->host);
@@ -125,10 +133,13 @@ write_confs(void)
    fprintf(f, "user = %s\n", primary->username);
    fprintf(f, "wal_slot = mctf_se\n");
    fprintf(f, "create_slot = yes\n");
-   if (storage.driver->write_server_conf(&storage, f) != MCTF_OK)
+   if (storage.driver->write_server_conf != NULL)
    {
-      fclose(f);
-      return MCTF_FAIL;
+      if (storage.driver->write_server_conf(&storage, f) != MCTF_OK)
+      {
+         fclose(f);
+         return MCTF_FAIL;
+      }
    }
    fclose(f);
 

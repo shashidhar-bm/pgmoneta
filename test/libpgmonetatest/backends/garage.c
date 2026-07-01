@@ -250,9 +250,10 @@ garage_write_server_conf(struct mctf_se* s, FILE* f)
 }
 
 const struct mctf_se_driver mctf_garage_driver = {
-   .name = "garage",
-   .storage_engine = "s3",
-   .start = garage_start,
-   .stop = garage_stop,
+   .name              = "garage",
+   .storage_engine    = "s3",
+   .start             = garage_start,
+   .stop              = garage_stop,
+   .write_global_conf = NULL,
    .write_server_conf = garage_write_server_conf,
 };
