@@ -55,8 +55,9 @@ extern "C" {
  * Well-known container kinds the framework knows how to start.
  */
 enum mctf_container_kind {
-   MCTF_CONTAINER_GARAGE = 0, /**< Garage, an S3-compatible object store */
-   MCTF_CONTAINER_AZURITE = 1 /**< Azurite, a local Azure Blob Storage emulator */
+   MCTF_CONTAINER_GARAGE = 0,  /**< Garage, an S3-compatible object store */
+   MCTF_CONTAINER_AZURITE = 1, /**< Azurite, a local Azure Blob Storage emulator */
+   MCTF_CONTAINER_SFTP = 2     /**< atmoz/sftp, SSH/SFTP test server */
 };
 
 /**

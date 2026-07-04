@@ -53,8 +53,9 @@ extern "C" {
  * Storage backends supported by the integration-test layer.
  */
 enum mctf_backend {
-   MCTF_BACKEND_GARAGE = 0, /**< S3, emulated by Garage */
-   MCTF_BACKEND_AZURITE = 1 /**< Azure Blob Storage, emulated by Azurite */
+   MCTF_BACKEND_GARAGE = 0,  /**< S3, emulated by Garage */
+   MCTF_BACKEND_AZURITE = 1, /**< Azure Blob Storage, emulated by Azurite */
+   MCTF_BACKEND_SSH = 2      /**< SSH, emulated by atmoz/sftp */
 };
 
 /**

@@ -50,6 +50,9 @@
 #include <unistd.h>
 
 #define MANAGED_DAEMON_RETRIES 15
+/* WAL streaming starts on a 60 s wall-clock periodic (wal_streaming_cb), so
+ * the receiver may connect up to a minute after the daemon reports ready. */
+#define WAL_STREAMING_RETRIES  90
 
 /*
  * The backend registry.
@@ -60,12 +63,12 @@
  */
 extern const struct mctf_se_driver mctf_garage_driver;
 extern const struct mctf_se_driver mctf_azurite_driver;
-/* extern const struct mctf_se_driver mctf_ssh_driver; */
+extern const struct mctf_se_driver mctf_ssh_driver;
 
 static const struct mctf_se_driver* registry[] = {
    [MCTF_BACKEND_GARAGE]  = &mctf_garage_driver,
    [MCTF_BACKEND_AZURITE] = &mctf_azurite_driver,
-   /* [MCTF_BACKEND_SSH] = &mctf_ssh_driver, */
+   [MCTF_BACKEND_SSH]     = &mctf_ssh_driver,
 };
 
 /* Managed-instance state (single active backend). */
@@ -179,12 +182,30 @@ daemon_up(void)
       {
          fprintf(stderr, "    - managed pgmoneta started\n");
          fflush(stderr);
+         break;
+      }
+      sleep(1);
+   }
+   if (i == MANAGED_DAEMON_RETRIES)
+   {
+      pgmoneta_log_error("mctf_se: managed pgmoneta did not become ready");
+      return MCTF_FAIL;
+   }
+
+   /* A backup issued before the WAL receiver connects fails with "not WAL
+    * streaming"; wait for the first (partial) WAL segment to appear. */
+   for (i = 0; i < WAL_STREAMING_RETRIES; i++)
+   {
+      if (mctf_sh(NULL, "ls %s/backup/primary/wal/ 2>/dev/null | grep -q .", run_dir) == 0)
+      {
+         fprintf(stderr, "    - WAL streaming active\n");
+         fflush(stderr);
          return MCTF_OK;
       }
       sleep(1);
    }
 
-   pgmoneta_log_error("mctf_se: managed pgmoneta did not become ready");
+   pgmoneta_log_error("mctf_se: WAL streaming did not start");
    return MCTF_FAIL;
 }
 
